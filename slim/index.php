@@ -136,5 +136,67 @@ $app->post('/users', function($request, $response) {
     return $response;
 });
 
+// PUT USER
+$app->put('/users/{id}', function($request, $response, $args) {
+    // OBTENER ID DEL HEADER    
+    $id = $args['id'];
+
+    // VALIDAR ID
+    if(!is_numeric($id)) {
+        $response->getBody()->write(json_encode(["error" => "ID inválido."]));
+        return $response->withStatus(400);
+    }
+
+    $data = $request->getParsedBody();
+
+    $name = $data['name'] ?? '';
+    $email = $data['email'] ?? '';
+    $password = $data['password'] ?? '';
+
+    // VALIDACION NOMBRE
+    if(empty($name) || !preg_match("/^[a-zA-Z\s]+$/", $name)) {
+        $response->getBody()->write(json_encode(["error" => "Nombre incompleto."]));
+        return $response->withStatus(400);
+    }
+
+    // VALIDACION EMAIL
+    if(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $response->getBody()->write(json_encode(["error" => "Correo no cumple condiciones."]));
+        return $response->withStatus(400);
+    }
+
+    // VALIDACION CONTRASEÑA
+    // CONTRASEÑ VACÍA
+    if(empty($password)) {
+        $response->getBody()->write(json_encode(["error" => "Debe ingresar una contraseña válida."]));
+        return $response->withStatus(400);
+    }
+    // CONTRASEÑA DÉBIL
+    if(!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $password)) {
+        $response->getBody()->write(json_encode(["error" => "La contraseña es demasiado débil."]));
+        return $response->withStatus(400);
+    }
+
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+    // CONEXIÓN CON LA BD
+    $pdo = new PDO("mysql:host=db;dbname=seminariophp", "root", "root");
+
+    // VERIFICAR EXISTENCIA DE USUARIO
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+    $stmt->execute([$id]);
+
+    if(!$stmt->fetch()) {
+        $response->getBody()->write(json_encode(["error" => "Usuario no encontrado"]));
+        return $response->withStatus(404);
+    }
+
+    // ACTUALIZAR
+    $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?");
+    $stmt->execute([$name, $email, $hashedPassword, $id]);
+    
+    $response->getBody()->write(json_encode(["mensaje" => "Usuario actualizado correctamente"]));
+    return $response;
+});
 
 $app->run();

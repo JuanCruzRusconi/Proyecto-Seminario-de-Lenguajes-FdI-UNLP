@@ -80,6 +80,61 @@ $app->get('/users/{id}', function($request, $response, $args) {
     return $response;
 });
 
+// POST USERS
+$app->post('/users', function($request, $response) {
+    $data = $request->getParsedBody();
+
+    $name = $data['name'] ?? '';
+    $email = $data['email'] ?? '';
+    $password = $data['password'] ?? '';
+
+    // VALIDACION NOMBRE
+    if(empty($name) || !preg_match("/^[a-zA-Z\s]+$/", $name)) {
+        $response->getBody()->write(json_encode(["error" => "Nombre incompleto."]));
+        return $response->withStatus(400);
+    }
+
+    // VALIDACION EMAIL
+    if(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $response->getBody()->write(json_encode(["error" => "Correo no cumple condiciones."]));
+        return $response->withStatus(400);
+    }
+
+    // VALIDACION CONTRASEÑA
+    // CONTRASEÑ VACÍA
+    if(empty($password)) {
+        $response->getBody()->write(json_encode(["error" => "Debe ingresar una contraseña válida."]));
+        return $response->withStatus(400);
+    }
+    // CONTRASEÑA DÉBIL
+    if(!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $password)) {
+        $response->getBody()->write(json_encode(["error" => "La contraseña es demasiado débil."]));
+        return $response->withStatus(400);
+    }
+
+    // HASH CONTRASEÑA
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+    //CONEXIÓN a la DB
+    $pdo = new PDO("mysql:host=db;dbname=seminariophp", "root", "root");
+
+    // VERIFICAR EXISTENCIA DE EMAIL
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+
+    $user = $stmt->fetch();
+    if($user) {
+        $response->getBody()->write(json_encode(["error" => "El correo ya se encuentra registrado."]));
+        return $response->withStatus(400);
+    }
+
+    // INSERT
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+    $stmt->execute([$name, $email, $hashedPassword]);
+
+    $response->getBody()->write(json_encode(["mensaje" => "Usuario registrado correctamente"]));
+    return $response;
+});
 
 
 $app->run();

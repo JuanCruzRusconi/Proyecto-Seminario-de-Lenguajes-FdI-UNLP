@@ -21,9 +21,16 @@ donde *seminariophp* es el valor de la variable `DB_VOLUME`
 
 ```bash
 docker compose up -d
+
 ```
 
 ## Terminar servicios
+
+```bash
+docker compose down
+```
+
+## Terminar servicios y eliminar
 
 ```bash
 docker compose down -v

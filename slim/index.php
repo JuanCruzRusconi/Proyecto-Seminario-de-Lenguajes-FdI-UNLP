@@ -6,6 +6,16 @@ use Slim\Factory\AppFactory;
 
 require __DIR__ . '/vendor/autoload.php';
 
+// JWT
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
+// DOTENV
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__, '.env');
+$dotenv->safeLoad();
+
+define('SECRET_KEY', $_ENV['JWT_SECRET']);
+
 $app = AppFactory::create();
 
 // PARSEO DEL BODY
@@ -24,6 +34,31 @@ $app->add( function ($request, $handler) {
     ;
 });
 
+//MIDDLEWARES
+
+$authMiddleware = function($request, $handler) {
+    
+    $authHeader = $request->getHeaderLine('Authorization');
+
+    if(!$authHeader) {
+        $response = new \Slim\Psr7\Response();
+        $response->getBody()->write(json_encode(["error" => "Se requiere el token para la petición."]));
+        return $response->withStatus(401);
+    }
+
+    $token = trim(str_replace('Bearer', '', $authHeader));
+
+    try {
+        $decoded = JWT::decode($token, new Key(SECRET_KEY, 'HS256'));
+        $request = $request->withAttribute('user', $decoded->data);
+    } catch (Exception $e) {
+        $response = new \Slim\Psr7\Response();
+        $response->getBody()->write(json_encode(["error" => "El token es inválido"]));
+        return $response->withStatus(401);
+    }
+
+    return $handler->handle($request);
+};
 
 // ENDPOINTS
 
@@ -32,7 +67,6 @@ $app->get('/test', function ($request, $response) {
     $response->getBody()->write(json_encode(["mensaje" => "Funciona correctamente."]));
     return $response;
 });
-
 
 // USUARIOS
 

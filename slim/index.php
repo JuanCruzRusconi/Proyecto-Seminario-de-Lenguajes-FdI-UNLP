@@ -68,6 +68,75 @@ $app->get('/test', function ($request, $response) {
     return $response;
 });
 
+// AUTENTICACIÓN
+
+// LOGIN
+$app->post('/login', function($request, $response) {
+    $data = $request->getParsedBody();
+
+    $email = $data['email'] ?? '';
+    $password = $data['password'] ?? '';
+
+    // VALIDAR EMAIL
+    if(empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $response->getBody()->write(json_encode(["error" => "Email inválido."]));
+        return $response->withStatus(400);
+    }
+
+    // VALIDAR CONTRASEÑA
+    if(empty($password)) {
+        $response->getBody()->write(json_encode(["error" => "La contraseña es obligatoria"]));
+        return $response->withStatus(400);
+    }
+
+    // CONEXIÓN
+    $pdo = new PDO("mysql:host=db;dbname=seminariophp", "root", "root");
+
+    // BUSCAR USUARIO
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // VERIFICACIÓN DE EXISTENCIA
+    if(!$user) {
+        $response->getBody()->write(json_encode(["error" => "Las credenciales son inválidas."]));
+        return $response->withStatus(401);
+    }
+
+    // VERIFICAR PASSWORD
+    if(!password_verify($password, $user['password'])) {
+        $response->getBody()->write(json_encode(["error" => "Las credenciales son inválidas."]));
+        return $response->withStatus(401);
+    }
+
+    // USUARIO LOGUEADO
+    // GENERAR PAYLOAD JWT
+    $payload = [
+        "iat" => time(),
+        "exp" => time() + 300,
+        "data" => [
+            "id" => $user['id'],
+            "email" => $user['email']
+        ]
+    ];
+    // GENERAR TOKEN JWT
+    $jwt = JWT::encode($payload, SECRET_KEY, 'HS256');
+
+    $response->getBody()->write(json_encode([
+        "mensaje" => "Usuario logueado", 
+        "user" => [
+            "id" => $user['id'],
+            "name" => $user['name'],
+            "email" => $user['email']
+        ],
+        "token" => $jwt
+    ]));
+
+    return $response;
+
+});
+
 // USUARIOS
 
 // GET PROFILE LOGUEADO

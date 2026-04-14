@@ -24,18 +24,43 @@ $app->add( function ($request, $handler) {
     ;
 });
 
-// TEST
+
+// ENDPOINTS
+
+// // TEST
 $app->get('/test', function ($request, $response) {
-    $data = ["mensaje" => "funciona perfecto"];
-    
-    $response->getBody()->write(json_encode($data));
-    return $response->withHeader('Content-Type', 'application/json');
+    $response->getBody()->write(json_encode(["mensaje" => "Funciona correctamente."]));
+    return $response;
 });
+
 
 // USUARIOS
 
+// GET PROFILE LOGUEADO
+$app->get('/profile', function($request, $response) {
+
+    $user = $request->getAttribute('user');
+
+    if(!$user) {
+        $response->getBody()->write(json_encode(["error" => "No se encunetra ningún usuario logueado."]));
+        return $response->withStatus(401);
+    }
+
+    $response->getBody()->write(json_encode([
+        "mensaje" => "Perfil de usuario logueado:",
+        "user" => [
+            $user
+        ]    
+    ]));
+
+    return $response;
+
+})->add($authMiddleware);
+
 // GET USERS
 $app->get('/users', function ($request, $response) {
+
+    $user = $request->getAttribute('user');
     // CONEXIÓN
     $pdo = new PDO("mysql:host=db;dbname=seminariophp", "root", "root");
 
@@ -48,7 +73,8 @@ $app->get('/users', function ($request, $response) {
     // RESPUESTA
     $response->getBody()->write(json_encode($users));
     return $response;
-});
+
+})->add($authMiddleware);
 
 // GET USER ID
 $app->get('/users/{id}', function($request, $response, $args) {
@@ -136,48 +162,69 @@ $app->post('/users', function($request, $response) {
     return $response;
 });
 
-// PUT USER
+// PUT USER ID
 $app->put('/users/{id}', function($request, $response, $args) {
     // OBTENER ID DEL HEADER    
     $id = $args['id'];
 
-    // VALIDAR ID
+    $user = $request->getAttribute('user');
+    $userId = (int) $user->id;
+
+    $data = $request->getParsedBody();
+
+    $name = $data['name'] ?? null;
+    $email = $data['email'] ?? null;
+    $password = $data['password'] ?? null;
+
+    // QUERY DINÁMICA
+    $fields = [];
+    $params = [];
+
+    // VALIDAR ID TIPO INT
     if(!is_numeric($id)) {
         $response->getBody()->write(json_encode(["error" => "ID inválido."]));
         return $response->withStatus(400);
     }
 
-    $data = $request->getParsedBody();
-
-    $name = $data['name'] ?? '';
-    $email = $data['email'] ?? '';
-    $password = $data['password'] ?? '';
-
-    // VALIDACION NOMBRE
-    if(empty($name) || !preg_match("/^[a-zA-Z\s]+$/", $name)) {
-        $response->getBody()->write(json_encode(["error" => "Nombre incompleto."]));
-        return $response->withStatus(400);
+    // VALIDACION DEL ID CON JWT
+    if((int)$id !== $userId) {
+        $response->getBody()->write(json_encode(["error" => "Debe ser el usuario logueado para hacer la actualización."]));
+        return $response->withStatus(403);
     }
 
-    // VALIDACION EMAIL
-    if(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $response->getBody()->write(json_encode(["error" => "Correo no cumple condiciones."]));
-        return $response->withStatus(400);
+    // VALIDACIÓN DE CAMPOS
+    if($name !== null) {
+        if(empty($name) || !preg_match("/^[a-zA-Z\s]+$/", $name)) {
+            $response->getBody()->write(json_encode(["error" => "Nombre inválido."]));
+            return $response->withStatus(400);
+        }
+        $fields[] = "name = ?";
+        $params[] = $name;
+    }
+    
+    if($email !== null) {
+        if(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $response->getBody()->write(json_encode(["error" => "Email inválido."]));
+            return $response->withStatus(400);
+        }
+        $fields[] = "email = ?";
+        $params[] = $email;
     }
 
-    // VALIDACION CONTRASEÑA
-    // CONTRASEÑ VACÍA
-    if(empty($password)) {
-        $response->getBody()->write(json_encode(["error" => "Debe ingresar una contraseña válida."]));
-        return $response->withStatus(400);
-    }
-    // CONTRASEÑA DÉBIL
-    if(!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $password)) {
-        $response->getBody()->write(json_encode(["error" => "La contraseña es demasiado débil."]));
-        return $response->withStatus(400);
+    if($password !== null) {
+        if(!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $password)) {
+            $response->getBody()->write(json_encode(["error" => "Contraseña inválida."]));
+            return $response->withStatus(400);
+        }
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $fields[] = "password = ?";
+        $params[] = $hashedPassword;
     }
 
-    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    if(empty($fields)) {
+        $response->getBody()->write(json_encode(["error" => "No se ingresaron campos para actualizar."]));
+        return $response->withStatus(400);
+    }
 
     // CONEXIÓN CON LA BD
     $pdo = new PDO("mysql:host=db;dbname=seminariophp", "root", "root");
@@ -187,16 +234,23 @@ $app->put('/users/{id}', function($request, $response, $args) {
     $stmt->execute([$id]);
 
     if(!$stmt->fetch()) {
-        $response->getBody()->write(json_encode(["error" => "Usuario no encontrado"]));
+        $response->getBody()->write(json_encode(["error" => "Usuario no encontrado."]));
         return $response->withStatus(404);
     }
 
     // ACTUALIZAR
-    $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?");
-    $stmt->execute([$name, $email, $hashedPassword, $id]);
-    
-    $response->getBody()->write(json_encode(["mensaje" => "Usuario actualizado correctamente"]));
-    return $response;
-});
+    $sql = "UPDATE users SET " .implode(", ", $fields) . " WHERE id = ?";
+    $params[] = $id;
 
-$app->run();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    $response->getBody()->write(json_encode(["mensaje" => "Usuario actualizado correctamente."]));
+    return $response;
+    // $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?");
+    // $stmt->execute([$name, $email, $hashedPassword, $id]);
+    
+    // $response->getBody()->write(json_encode(["mensaje" => "Usuario actualizado correctamente."]));
+    // return $response;
+
+})->add($authMiddleware);

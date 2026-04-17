@@ -6,10 +6,6 @@ use Slim\Factory\AppFactory;
 
 require __DIR__ . '/vendor/autoload.php';
 
-// JWT
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
-
 // DOTENV
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__, '.env');
 $dotenv->safeLoad();
@@ -34,6 +30,14 @@ $app->add( function ($request, $handler) {
     ;
 });
 
+// SIN COMPOSER
+require __DIR__ . '/src/Config/db.php';
+(require __DIR__ . '/src/Middlewares/AuthMiddleware.php');
 (require __DIR__ . '/src/Routes/routes.php')($app);
+(require __DIR__ . '/src/Controllers/AuthController.php');
+(require __DIR__ . '/src/Controllers/UserController.php');
+// (require __DIR__ . '/src/Controllers/AssetsController.php');
+// (require __DIR__ . '/src/Controllers/OperationsController.php');
+// (require __DIR__ . '/src/Controllers/PortfolioController.php');
 
 $app->run();

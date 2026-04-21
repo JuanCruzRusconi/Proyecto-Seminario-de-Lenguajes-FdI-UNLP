@@ -38,7 +38,7 @@ class UserController {
 
         $user = $request->getAttribute('user');
         // CONEXIÓN
-        $pdo = Dtabase::PDO();
+        $pdo = Database::PDO();
 
         // QUERY
         $stmt = $pdo->query("SELECT id, name, balance FROM users");
@@ -139,7 +139,7 @@ class UserController {
     }
 
     // PUT USER ID
-    public function putUser(Request $request, Response $response, $args) {
+    public function putUsersId(Request $request, Response $response, $args) {
         // OBTENER ID DEL HEADER    
         $id = $args['id'];
 

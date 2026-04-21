@@ -1,9 +1,6 @@
 <?php
 
 use Slim\App;
-use App\Middlewares\AuthMiddleware;
-use App\Controllers\AuthController;
-use App\Controllers\UserController;
 
 // JWT
 use Firebase\JWT\JWT;
@@ -12,36 +9,16 @@ use Firebase\JWT\Key;
 return function(App $app) {
 
     // TEST
-    $app->get('/test', [UserController::class, 'getTest']);
+    $app->get('/test', function($request, $response) {
+        $response->getBody()->write(json_encode(["mensaje" => "Funciona correctamente."]));
+        return $response->withStatus(200);
+    });
 
-    // AUTENTICACION
-    // JWT
-    $app->post('/loginjwt', [AuthController::class, 'postLoginJwt']);
+    // RUTAS AUTENTICACION
+    (require __DIR__ . '/AuthRoutes.php')($app);
 
-    // LOGIN SESSION
-    $app->post('/login', [AuthController::class, 'postLogin']);
+    // RUTAS USUARIOS
+    (require __DIR__ . '/UserRoutes.php')($app);
     
-    // LOGOUT SESSION
-    $app->post('/logout', [AuthController::class, 'postLogout'])
-        ->add(new AuthMiddleware());
-    // USUARIOS
-
-    // GET PROFILE LOGUEADO
-    $app->get('/profile', [UserController::class, 'getProfile'])
-        ->add(new AuthMiddleware());
-
-    // GET USERS
-    $app->get('/users', [UserController::class, 'getUsers'])
-        ->add(new AuthMiddleware());
-
-    // GET USER ID
-    $app->get('/users/{id}', [UserController::class, 'getUsersId']);
-
-    // POST USERS
-    $app->post('/users', [UserController::class, 'postUsers']);
-
-    // PUT USER ID
-    $app->put('/users/{id}', [UserController::class, 'putUser'])
-        ->add(new AuthMiddleware());
 
 };

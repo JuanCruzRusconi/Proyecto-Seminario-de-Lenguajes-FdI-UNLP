@@ -7,7 +7,7 @@ use Slim\Factory\AppFactory;
 require __DIR__ . '/vendor/autoload.php';
 
 // DOTENV
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__, '.env');
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->safeLoad();
 
 define('SECRET_KEY', $_ENV['JWT_SECRET']);

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Middlewares;
+use PDO;
 use App\Config\Database;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Psr7\Response;
@@ -63,7 +64,7 @@ class AuthMiddleware {
         }
 
         // VALIDAR EXPIRACIÓN
-        if(!$user['token_expiration_at'] < date('Y-m-d H:i:s')) {
+        if($user['token_expired_at'] < date('Y-m-d H:i:s')) {
             $response = new Response();
             $response->getBody()->write(json_encode(["error" => "El toekn ha expirado."]));
             return $response->withStatus(401);

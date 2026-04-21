@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Controllers;
+use PDO;
 use App\Config\Database;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -13,7 +14,7 @@ class UserController {
     }
 
     public function getProfile(Request $request, Response $response) {
-
+        
         $user = $request->getAttribute('user');
 
         if(!$user) {
@@ -63,7 +64,7 @@ class UserController {
             return $response->withStatus(400);
         }
         //$pdo = new PDO("sql:host=db;dbname=seminariophp", "root", "root");
-        $pdo = Databse::PDO();
+        $pdo = Database::PDO();
 
         $stmt = $pdo->prepare("SELECT id, name, email, balance FROM users WHERE id = ?");
         $stmt->execute([$id]);
@@ -143,7 +144,7 @@ class UserController {
         $id = $args['id'];
 
         $user = $request->getAttribute('user');
-        $userId = (int) $user->id;
+        $userId = (int) $user['id'];
 
         $data = $request->getParsedBody();
 

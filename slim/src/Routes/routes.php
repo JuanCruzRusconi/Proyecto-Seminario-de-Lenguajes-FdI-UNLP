@@ -19,6 +19,8 @@ return function(App $app) {
 
     // RUTAS USUARIOS
     (require __DIR__ . '/UserRoutes.php')($app);
+
+    (require __DIR__ . '/AssetRoutes.php')($app);
     
 
 };

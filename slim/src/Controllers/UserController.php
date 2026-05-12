@@ -8,11 +8,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 
 class UserController {
 
-    public function getTest(Request $request, Response $response) {
-        $response->getBody()->write(json_encode(["mensaje" => "Funciona correctamente."]));
-        return $response;
-    }
-
+    // GET PERFIL LOGUEADO
     public function getProfile(Request $request, Response $response) {
         
         $user = $request->getAttribute('user');
@@ -28,8 +24,7 @@ class UserController {
                 $user
             ]    
         ]));
-
-        return $response;
+        return $response->withStatus(200);
 
     }
 
@@ -48,7 +43,7 @@ class UserController {
 
         // RESPUESTA
         $response->getBody()->write(json_encode($users));
-        return $response;
+        return $response->withStatus(200);
 
     }
 
@@ -79,7 +74,8 @@ class UserController {
 
         // USUARIO
         $response->getBody()->write(json_encode($user));
-        return $response;
+        return $response->withStatus(200);
+
     }
 
     // POST USERS
@@ -135,7 +131,8 @@ class UserController {
         $stmt->execute([$name, $email, $hashedPassword]);
 
         $response->getBody()->write(json_encode(["mensaje" => "Usuario registrado correctamente"]));
-        return $response;
+        return $response->withStatus(200);
+    
     }
 
     // PUT USER ID
@@ -222,12 +219,7 @@ class UserController {
         $stmt->execute($params);
 
         $response->getBody()->write(json_encode(["mensaje" => "Usuario actualizado correctamente."]));
-        return $response;
-        // $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?");
-        // $stmt->execute([$name, $email, $hashedPassword, $id]);
-        
-        // $response->getBody()->write(json_encode(["mensaje" => "Usuario actualizado correctamente."]));
-        // return $response;
+        return $response->withStatus(200);
 
     }
 }
